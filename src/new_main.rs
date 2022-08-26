@@ -25,7 +25,6 @@ use heapless::{consts::{U64, U8},  spsc::Queue};
 // pseudo-random number generation
 use oorandom;
 use oorandom::Rand32;
-use crate::Direction::Up;
 
 const DISPLAY_WIDTH: u32 = 320;
 const DISPLAY_HEIGHT: u32 = 240;
@@ -229,18 +228,6 @@ impl Snake {
     }
 
     fn set_direction(&mut self, direction: Direction) {
-        if (self.snake_direction == Direction::Up && direction == Direction::Down) {
-            return;
-        }
-        if (self.snake_direction == Direction::Down && direction == Direction::Up) {
-            return;
-        }
-        if (self.snake_direction == Direction::Left && direction == Direction::Right) {
-            return;
-        }
-        if (self.snake_direction == Direction::Right && direction == Direction::Left) {
-            return;
-        }
         self.snake_direction = direction;
     }
 
@@ -256,7 +243,7 @@ impl Snake {
         result
     }
 }
-#[derive(PartialEq)]
+
 enum Direction {
     Up,
     Down,

@@ -6,9 +6,8 @@ name = "snake"
 version = "0.1.0"
 
 [dependencies]
-cortex-m = "0.6.0"
-cortex-m-rt = "0.7.1"
-cortex-m-semihosting = "0.3.3"
+cortex-m = "0.7.3"
+cortex-m-rt = "0.7"
 panic-halt = "0.2.0"
 embedded-graphics = "0.7.1"
 wio_terminal = "0.6.1"

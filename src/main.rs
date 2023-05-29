@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use core::fmt::{Debug};
+use core::fmt::Debug;
 use embedded_graphics as eg;
 use panic_halt as _;
 use wio_terminal as wio;
@@ -25,7 +25,6 @@ use heapless::{consts::{U64, U8},  spsc::Queue};
 // pseudo-random number generation
 use oorandom;
 use oorandom::Rand32;
-use crate::Direction::Up;
 
 const DISPLAY_WIDTH: u32 = 320;
 const DISPLAY_HEIGHT: u32 = 240;
@@ -59,6 +58,8 @@ fn main() -> ! {
     );
     let mut delay = Delay::new(core.SYST, &mut clocks);
     let sets = wio::Pins::new(peripherals.PORT).split();
+    let mut uled = sets.user_led.into_push_pull_output();
+    uled.set_low().unwrap();
     let mut consumer = unsafe { Q.split().1 };
 
 
@@ -72,7 +73,7 @@ fn main() -> ! {
         .build();
 
     let snake_style = PrimitiveStyleBuilder::new()
-        .fill_color(Rgb565::WHITE)
+        .fill_color(Rgb565::RED)
         .build();
 
     // Initialize the ILI9341-based LCD display. Create a black backdrop the size of
@@ -91,7 +92,10 @@ fn main() -> ! {
         .unwrap();
 
     // Initializing backdrop and initial sprite render
-    Rectangle::new(Point::new(0,0), Size::new(360, 240)).into_styled(black_style).draw(&mut display).unwrap();
+    Rectangle::new(Point::new(0, 0), Size::new(360, 240))
+        .into_styled(black_style)
+        .draw(&mut display)
+        .unwrap();
 
     let mut player = Snake::init();
     player.translate(&mut display);
@@ -109,15 +113,23 @@ fn main() -> ! {
     let mut food = Food::init_and_draw(5, &food_style, &snake_style, &mut display);
 
     let mut flag_incr_snake_len_this_iter = false;
-    let mut delay_gap : u8 = 100;
+    let mut delay_gap: u8 = 100;
     loop {
-        if let Some(press)= consumer.dequeue() {
+        if let Some(press) = consumer.dequeue() {
             // match with button
             match press.button {
-                Button::Down => {player.set_direction(Direction::Down);}
-                Button::Up => {player.set_direction(Direction::Up);}
-                Button::Left => {player.set_direction(Direction::Left);}
-                Button::Right => {player.set_direction(Direction::Right);}
+                Button::Down => {
+                    player.set_direction(Direction::Down);
+                }
+                Button::Up => {
+                    player.set_direction(Direction::Up);
+                }
+                Button::Left => {
+                    player.set_direction(Direction::Left);
+                }
+                Button::Right => {
+                    player.set_direction(Direction::Right);
+                }
                 _ => {}
             }
         }
@@ -131,15 +143,29 @@ fn main() -> ! {
         }
 
         if player.is_self_intersecting() {
+            uled.set_high().unwrap();
             loop {} // effectively exiting...
         }
 
         // clear previously printed sprite
-        player.cells_queue.enqueue((player.head_sprite.primitive.top_left.x, player.head_sprite.primitive.top_left.y)).unwrap();
+        player
+            .cells_queue
+            .enqueue((
+                player.head_sprite.primitive.top_left.x,
+                player.head_sprite.primitive.top_left.y,
+            ))
+            .unwrap();
         player.translate(&mut display);
-        // if snake eats food, we don't clear the coord in the queue effectively increasing the snake's size
+        // if snake eats food, we don't clear the coord in the queue effectively
+        // increasing the snake's size
         if !flag_incr_snake_len_this_iter {
-            Rectangle::new( Point::from(player.cells_queue.dequeue().unwrap()), Size::new(CELL_SIZE, CELL_SIZE)).into_styled(black_style).draw(&mut display).unwrap();
+            Rectangle::new(
+                Point::from(player.cells_queue.dequeue().unwrap()),
+                Size::new(CELL_SIZE, CELL_SIZE),
+            )
+            .into_styled(black_style)
+            .draw(&mut display)
+            .unwrap();
         }
         flag_incr_snake_len_this_iter = false;
         delay.delay_ms(delay_gap);
@@ -154,31 +180,47 @@ struct Food<'a> {
 }
 
 impl<'a> Food<'a> {
-    fn init_and_draw<D>(seed: u64, food_style: &'a PrimitiveStyle<Rgb565>, snake_style: &'a PrimitiveStyle<Rgb565>, display: &mut D) -> Self
+    fn init_and_draw<D>(
+        seed: u64,
+        food_style: &'a PrimitiveStyle<Rgb565>,
+        snake_style: &'a PrimitiveStyle<Rgb565>,
+        display: &mut D,
+    ) -> Self
     where
-        D: DrawTarget<Color = Rgb565>, <D as DrawTarget>::Error: Debug {
+        D: DrawTarget<Color = Rgb565>,
+        <D as DrawTarget>::Error: Debug,
+    {
         let mut rng = Rand32::new(seed);
-        let x= (rng.rand_range(0..GRID_WIDTH) * CELL_SIZE) as i32;
-        let y= (rng.rand_range(0..GRID_HEIGHT) * CELL_SIZE) as i32;
+        let x = (rng.rand_range(0..GRID_WIDTH) * CELL_SIZE) as i32;
+        let y = (rng.rand_range(0..GRID_HEIGHT) * CELL_SIZE) as i32;
         let sprite = Rectangle::new(Point::new(x, y), Size::new(CELL_SIZE, CELL_SIZE))
             .into_styled(*food_style);
         sprite.draw(display).unwrap();
-        Self {sprite, rng, food_style, snake_style }
+        Self {
+            sprite,
+            rng,
+            food_style,
+            snake_style,
+        }
     }
 
     fn respawn<D>(&mut self, display: &mut D)
     where
-        D: DrawTarget<Color = Rgb565>, <D as DrawTarget>::Error: Debug {
+        D: DrawTarget<Color = Rgb565>,
+        <D as DrawTarget>::Error: Debug,
+    {
         // clear previous food sprite
-        self.sprite.primitive.draw_styled(self.snake_style, display).unwrap();
-        let x= (self.rng.rand_range(0..GRID_WIDTH) * CELL_SIZE) as i32;
-        let y= (self.rng.rand_range(0..GRID_HEIGHT) * CELL_SIZE) as i32;
+        self.sprite
+            .primitive
+            .draw_styled(self.snake_style, display)
+            .unwrap();
+        let x = (self.rng.rand_range(0..GRID_WIDTH) * CELL_SIZE) as i32;
+        let y = (self.rng.rand_range(0..GRID_HEIGHT) * CELL_SIZE) as i32;
         let sprite = Rectangle::new(Point::new(x, y), Size::new(CELL_SIZE, CELL_SIZE))
             .into_styled(*self.food_style);
         self.sprite = sprite;
         self.sprite.draw(display).unwrap();
     }
-
 }
 
 struct Snake {
@@ -192,21 +234,29 @@ impl Snake {
         let style = PrimitiveStyleBuilder::new()
             .fill_color(Rgb565::WHITE)
             .build();
-        let position = Point::new(((GRID_WIDTH / 2 - 1) * CELL_SIZE)as i32, ((GRID_HEIGHT/2 - 1) * CELL_SIZE) as i32);
-        let sprite =
-            Rectangle::new(position, Size::new(CELL_SIZE, CELL_SIZE)).into_styled(style);
-        let cells_queue : Queue<(i32, i32), U64> = Queue::new();
-        Self { head_sprite: sprite, snake_direction: Direction::Down, cells_queue}
+        let position = Point::new(
+            ((GRID_WIDTH / 2 - 1) * CELL_SIZE) as i32,
+            ((GRID_HEIGHT / 2 - 1) * CELL_SIZE) as i32,
+        );
+        let sprite = Rectangle::new(position, Size::new(CELL_SIZE, CELL_SIZE)).into_styled(style);
+        let cells_queue: Queue<(i32, i32), U64> = Queue::new();
+        Self {
+            head_sprite: sprite,
+            snake_direction: Direction::Down,
+            cells_queue,
+        }
     }
 
     fn translate<D>(&mut self, display: &mut D)
     where
-        D: DrawTarget<Color = Rgb565>,  <D as DrawTarget>::Error: Debug {
+        D: DrawTarget<Color = Rgb565>,
+        <D as DrawTarget>::Error: Debug,
+    {
         match self.snake_direction {
-            Direction::Up => {self.head_sprite.primitive.top_left.y -= CELL_SIZE as i32}
-            Direction::Down => {self.head_sprite.primitive.top_left.y += CELL_SIZE as i32}
-            Direction::Left => {self.head_sprite.primitive.top_left.x -= CELL_SIZE as i32}
-            Direction::Right => {self.head_sprite.primitive.top_left.x += CELL_SIZE as i32}
+            Direction::Up => self.head_sprite.primitive.top_left.y -= CELL_SIZE as i32,
+            Direction::Down => self.head_sprite.primitive.top_left.y += CELL_SIZE as i32,
+            Direction::Left => self.head_sprite.primitive.top_left.x -= CELL_SIZE as i32,
+            Direction::Right => self.head_sprite.primitive.top_left.x += CELL_SIZE as i32,
         }
 
         // code for wrap-around
@@ -218,7 +268,7 @@ impl Snake {
             self.head_sprite.primitive.top_left.x = DISPLAY_WIDTH as i32 - CELL_SIZE as i32;
         }
 
-        if self.head_sprite.primitive.top_left.x >= DISPLAY_WIDTH as i32{
+        if self.head_sprite.primitive.top_left.x >= DISPLAY_WIDTH as i32 {
             self.head_sprite.primitive.top_left.x = 0;
         }
 
@@ -229,33 +279,41 @@ impl Snake {
     }
 
     fn set_direction(&mut self, direction: Direction) {
-        if (self.snake_direction == Direction::Up && direction == Direction::Down) {
+        if self.snake_direction == Direction::Up && direction == Direction::Down {
             return;
         }
-        if (self.snake_direction == Direction::Down && direction == Direction::Up) {
+        if self.snake_direction == Direction::Down && direction == Direction::Up {
             return;
         }
-        if (self.snake_direction == Direction::Left && direction == Direction::Right) {
+        if self.snake_direction == Direction::Left && direction == Direction::Right {
             return;
         }
-        if (self.snake_direction == Direction::Right && direction == Direction::Left) {
+        if self.snake_direction == Direction::Right && direction == Direction::Left {
             return;
         }
         self.snake_direction = direction;
     }
 
     fn is_player_eat_food(&self, food: &Food) -> bool {
-        !self.head_sprite.primitive.intersection(&food.sprite.primitive).is_zero_sized()
+        !self
+            .head_sprite
+            .primitive
+            .intersection(&food.sprite.primitive)
+            .is_zero_sized()
     }
 
-    fn is_self_intersecting(& self) -> bool {
+    fn is_self_intersecting(&self) -> bool {
         let mut result = false;
         for coord in self.cells_queue.iter() {
-            result = result || !Rectangle::new(Point::from(*coord), Size::from((CELL_SIZE, CELL_SIZE))).intersection(&self.head_sprite.primitive).is_zero_sized()
+            result = result
+                || !Rectangle::new(Point::from(*coord), Size::from((CELL_SIZE, CELL_SIZE)))
+                    .intersection(&self.head_sprite.primitive)
+                    .is_zero_sized()
         }
         result
     }
 }
+
 #[derive(PartialEq)]
 enum Direction {
     Up,

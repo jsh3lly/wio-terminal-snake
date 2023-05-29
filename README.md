@@ -1,7 +1,7 @@
 # 🐍**Snake**🐍
 
 ## Note
-This project was accepted as an [example](https://github.com/atsamd-rs/atsamd/tree/master/boards/wio_terminal/examples/snake.rs) on the rust [atsamd](https://github.com/atsamd-rs/atsamd) repo. [this](https://github.com/atsamd-rs/atsamd/pull/624) is the PR which was accepted.
+This project was accepted as an [example](https://github.com/atsamd-rs/atsamd/tree/master/boards/wio_terminal/examples/snake.rs) on the rust [atsamd](https://github.com/atsamd-rs/atsamd) repo. [This](https://github.com/atsamd-rs/atsamd/pull/624) is the PR which was accepted.
 
 ## Overview
 This project implements the generic snake game for the arm based Wio Terminal embedded system. It
